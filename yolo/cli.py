@@ -3,7 +3,8 @@
   yolo init                 create the vault (a private local git repo)
   yolo ingest [--since 7d]  normalize + redact new threads into vault/threads/
   yolo update [--agent X]   have a headless agent fold the new threads into vault/wiki/
-  yolo weekly               ingest + update + commit (what the schedule runs)
+  yolo refresh              ingest + drain pending updates + commit
+  yolo weekly               compatibility alias for refresh
   yolo schedule install     weekly launchd job (macOS)
   yolo stats                what's in the vault
   yolo view                 build a browsable HTML copy of the wiki and open it
@@ -139,13 +140,27 @@ def cmd_ingest(a) -> list[Path]:
     v = a.vault
     state = load_state(v)
     since = parse_since(a.since, state)
-    queue_since = parse_since(a.queue_since, state) if getattr(a, "queue_since", None) else since
+    scan_started = now()
+    checkpoints = state.setdefault("last_ingest_by_source", {})
+    errors = state.setdefault("ingest_errors", {})
+    # Seed unselected sources too, before the legacy global timestamp advances.
+    for name in sources.ALL:
+        checkpoints.setdefault(name, state.get("last_ingest", since.isoformat()))
     wanted = a.source or list(sources.ALL)
     touched, queued, totals = [], [], {}
     for name in wanted:
         n = chars = hits = 0
+        # A quiet export inbox must not advance past a snapshot that arrives later.
+        # Migrate old vaults from their existing global checkpoint, once per source.
+        checkpoint = checkpoints.get(name, state.get("last_ingest"))
+        source_since = (datetime.fromisoformat(checkpoint) - timedelta(hours=1)
+                        if a.since == "last" and checkpoint else since)
+        queue_since = (parse_since(a.queue_since, state)
+                       if getattr(a, "queue_since", None) else source_since)
+        high_water = datetime.fromisoformat(checkpoint) if checkpoint else since
         try:
-            for t in sources.ALL[name].threads(since, inbox=v / "inbox"):
+            for t in sources.ALL[name].threads(source_since, inbox=v / "inbox"):
+                high_water = max(high_water, min(t.updated, scan_started))
                 if excluded(t, v) or not any(m.role == "user" for m in t.messages):
                     continue
                 body, h = render(t)
@@ -160,7 +175,13 @@ def cmd_ingest(a) -> list[Path]:
                 n, chars, hits = n + 1, chars + len(body), hits + h
         except Exception as e:  # one broken source shouldn't stop the others
             print(f"  {name}: FAILED ({e})", file=sys.stderr)
+            errors[name] = str(e)
+            # Retain an explicitly requested backfill boundary for the retry.
+            checkpoints[name] = min(datetime.fromisoformat(checkpoints[name]),
+                                    source_since + timedelta(hours=1)).isoformat()
             continue
+        checkpoints[name] = high_water.isoformat()
+        errors.pop(name, None)
         totals[name] = n
         print(f"  {name:12} {n:5} threads  ~{chars // 4:>9,} tokens  {hits} secrets redacted")
     state["last_ingest"] = now().isoformat()
@@ -226,8 +247,11 @@ def cmd_update(a) -> bool:
     return True
 
 
-def cmd_weekly(a) -> None:
+def cmd_refresh(a) -> bool:
     try:
+        if a.dry_run:
+            print("dry run: skipping ingest and commits; previewing the next pending batch")
+            return cmd_update(a)
         a.since = "last"
         a.source = None
         cmd_ingest(a)
@@ -235,11 +259,15 @@ def cmd_weekly(a) -> None:
         git(a.vault, "commit", "-qm", f"yolo: ingest {now():%Y-%m-%d}")
         while load_state(a.vault).get("pending"):
             if not cmd_update(a):
-                notify("weekly update failed — check `yolo` logs (agent login expired?)")
-                sys.exit(1)
+                notify("wiki update failed — check YOLO logs (agent login expired?)")
+                return False
+        if load_state(a.vault).get("ingest_errors"):
+            notify("wiki refreshed with source failures — check ingest_errors in state.json")
+            return False
         notify("personal wiki updated")
+        return True
     except Exception as e:
-        notify(f"weekly run crashed: {e}")
+        notify(f"refresh crashed: {e}")
         raise
 
 
@@ -296,7 +324,7 @@ def main(argv=None) -> None:
     p.add_argument("--since", default="last", help="7d, 2w, all, last, or YYYY-MM-DD")
     p.add_argument("--source", action="append", choices=list(sources.ALL))
     p.add_argument("--queue-since", help="archive everything from --since, but only queue threads newer than this for the wiki (e.g. --since all --queue-since 30d)")
-    for name in ("update", "weekly"):
+    for name in ("update", "refresh", "weekly"):
         p = sub.add_parser(name)
         p.add_argument("--agent", default="codex", choices=["codex", "claude"])
         p.add_argument("--batch", type=int, default=40, help="threads per agent run")
@@ -313,11 +341,15 @@ def main(argv=None) -> None:
     p = sub.add_parser("view")
     p.add_argument("--no-open", action="store_true", help="only build the HTML file")
     a = ap.parse_args(argv)
+    if hasattr(a, "batch") and a.batch < 1:
+        ap.error("--batch must be at least 1")
     a.vault = a.vault.expanduser().resolve()
     if a.vault == REPO or REPO in a.vault.parents:
         raise SystemExit(f"refusing to use a vault inside the YOLO repo ({REPO}); personal data must live elsewhere")
-    {"init": cmd_init, "ingest": cmd_ingest, "update": cmd_update, "weekly": cmd_weekly,
-     "schedule": cmd_schedule, "stats": cmd_stats, "view": cmd_view}[a.cmd](a) is False and sys.exit(1)
+    result = {"init": cmd_init, "ingest": cmd_ingest, "update": cmd_update, "refresh": cmd_refresh, "weekly": cmd_refresh,
+              "schedule": cmd_schedule, "stats": cmd_stats, "view": cmd_view}[a.cmd](a)
+    if result is False or (a.cmd == "ingest" and load_state(a.vault).get("ingest_errors")):
+        sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 **You only live once. Your context shouldn't die with every new chat window.**
 
 YOLO turns every thread you've had with every AI into one living personal
-wiki that's on your machine, kept up to date every week, and owned by you.
+wiki that's on your machine, kept up to date on a schedule, and owned by you.
 
 > This repo is the **tool and the idea**, never anyone's data. Your wiki lives
 > in a separate private folder on your computer (default `~/PersonalContext`)
@@ -27,7 +27,7 @@ YOLO takes the opposite position:
 - **It's one picture, not ten slices.** All threads from all tools are merged,
   so you can see what you're *actually* working on: projects, decisions,
   people, open loops.
-- **It's alive.** A scheduled agent updates it every week, so it keeps up as
+- **It's alive.** A scheduled agent updates it regularly, so it keeps up as
   your goals and projects change instead of freezing into a stale profile.
 - **It's portable.** Any model can read it: paste `now.md` into a chat, point
   an agent at the folder, or open it in Obsidian. Switching models costs nothing.
@@ -63,7 +63,9 @@ knowledge once into linked pages and keep them up to date.
 
 <sub>\*Except the text you choose to send to your agent's model provider in step 2. Use a local model if you want zero egress.</sub>
 
-Every Sunday evening (via `launchd`; if the Mac was asleep, the run happens when it wakes):
+Each refresh runs the following steps. The built-in macOS schedule runs on Sunday
+evening; a browser-capable app automation can instead own a five-day workflow
+([setup and source coverage](docs/web-imports.md)).
 
 1. **Ingest.** Read new conversations since the last run from each tool's local
    logs, plus any ChatGPT, Claude.ai or Grok export zips you dropped in `inbox/`. Keep only what you and
@@ -105,13 +107,15 @@ Every Sunday evening (via `launchd`; if the Mac was asleep, the run happens when
 pip install git+https://github.com/Milbaxter/yolo
 yolo init                     # creates ~/PersonalContext (a private local git repo)
 yolo ingest --since all --queue-since 30d   # archive everything, fold the last month into the wiki
-yolo update --agent claude    # or --agent codex [--model …]; repeat until nothing pending
-yolo schedule install         # weekly run from then on
+yolo refresh --agent claude   # or --agent codex [--model …]; drains all pending batches
+yolo schedule install         # optional weekly local-data job; choose one scheduler
 ```
 
 Read it in a browser with `yolo view`: one local HTML file with a sidebar, search and clickable `[[links]]`. It is rebuilt after every update.
 
-Other commands: `yolo stats`, `yolo update --dry-run`, `yolo schedule uninstall`.
+Other commands: `yolo stats`, `yolo refresh --dry-run`, `yolo schedule uninstall`.
+`yolo weekly` remains an alias for `yolo refresh`. Source failures preserve their
+checkpoints and cause `ingest` / `refresh` to exit non-zero; healthy sources continue.
 Change the vault location with `--vault PATH` or `YOLO_VAULT`.
 
 > Heads-up: the Ultralytics object-detection package also installs a `yolo`
@@ -128,10 +132,15 @@ Change the vault location with `--vault PATH` or `YOLO_VAULT`.
 | ChatGPT | export zip → `inbox/chatgpt/` | Settings → Data controls → Export. |
 | Claude.ai / desktop chat | export zip → `inbox/claude/` | Settings → Privacy → Export data. |
 | Grok | export zip → `inbox/grok/` | grok.com → Settings → Download your data (`prod-grok-backend.json`). Format is undocumented, so the parser is lenient. |
-| Gemini web, Perplexity, aider, Continue | planned | PRs welcome; an adapter is roughly 50 lines. |
+| Gemini web | browser review by an agent | Selective notes with source URLs and explicit date/coverage limits; no built-in web adapter. |
+| Grok Bot | browser review by an agent | The tested account export omitted primary Bot history. Exact dates and complete voice transcripts may be unavailable. |
+| Perplexity, aider, Continue | planned | PRs welcome; an adapter is roughly 50 lines. |
 
-Web chat apps keep your history on their servers, so the only way to get it is
-an export. Doing one a month is enough.
+Web chat apps need fresh exports or an authorized browser review. A scheduled
+CLI run cannot collect server-side history by itself. See the
+[Gemini/Grok import walkthrough and five-day workflow](docs/web-imports.md) for
+the tested process, evidence format, automation procedure and known gaps.
+Keep raw exports, source URLs and personal context in the private vault.
 
 ## Safety and privacy
 
@@ -143,6 +152,10 @@ an export. Doing one a month is enough.
   `claude --permission-mode acceptEdits` with an allowlist of file tools) and
   runs without saving its own session, so YOLO never ingests itself.
 - **Zero-egress option:** run the update step on a local model (e.g. `codex --oss` with Ollama).
+
+## Development
+
+Run the regression checks with `python3 -m unittest discover -s tests -v`.
 
 ## Roadmap
 
