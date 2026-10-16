@@ -6,6 +6,7 @@
   yolo weekly               ingest + update + commit (what the schedule runs)
   yolo schedule install     weekly launchd job (macOS)
   yolo stats                what's in the vault
+  yolo view                 build a browsable HTML copy of the wiki and open it
 """
 from __future__ import annotations
 
@@ -87,7 +88,7 @@ def cmd_init(a) -> None:
     if not (v / "CLAUDE.md").exists():
         (v / "CLAUDE.md").write_text("@AGENTS.md\n")
     if not (v / ".gitignore").exists():
-        (v / ".gitignore").write_text("inbox/\n.yolo/runs/\n")
+        (v / ".gitignore").write_text("inbox/\n.yolo/runs/\n.yolo/wiki.html\n")
     if not (v / ".git").exists():
         git(v, "init", "-q")
         git(v, "add", "-A")
@@ -218,6 +219,9 @@ def cmd_update(a) -> bool:
     save_state(v, state)
     git(v, "add", "-A")
     git(v, "commit", "-qm", f"yolo: fold {len(batch)} threads ({a.agent}, {now():%Y-%m-%d})")
+    from .view import build
+
+    build(v)
     print(f"done; review with: git -C {v} show --stat HEAD")
     return True
 
@@ -262,6 +266,15 @@ def cmd_schedule(a) -> None:
     print(f"installed {plist}: every weekday={a.weekday} at {a.hour}:00 (runs on wake if the Mac slept)")
 
 
+def cmd_view(a) -> None:
+    from .view import build
+
+    out = build(a.vault)
+    print(out)
+    if not a.no_open and sys.platform == "darwin":
+        subprocess.run(["open", str(out)], check=False)
+
+
 def cmd_stats(a) -> None:
     v = a.vault
     by = {}
@@ -297,12 +310,14 @@ def main(argv=None) -> None:
     p.add_argument("--hour", type=int, default=20)
     p.add_argument("--model")
     sub.add_parser("stats")
+    p = sub.add_parser("view")
+    p.add_argument("--no-open", action="store_true", help="only build the HTML file")
     a = ap.parse_args(argv)
     a.vault = a.vault.expanduser().resolve()
     if a.vault == REPO or REPO in a.vault.parents:
         raise SystemExit(f"refusing to use a vault inside the YOLO repo ({REPO}); personal data must live elsewhere")
     {"init": cmd_init, "ingest": cmd_ingest, "update": cmd_update, "weekly": cmd_weekly,
-     "schedule": cmd_schedule, "stats": cmd_stats}[a.cmd](a) is False and sys.exit(1)
+     "schedule": cmd_schedule, "stats": cmd_stats, "view": cmd_view}[a.cmd](a) is False and sys.exit(1)
 
 
 if __name__ == "__main__":

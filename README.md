@@ -109,6 +109,8 @@ yolo update --agent claude    # or --agent codex [--model …]; repeat until not
 yolo schedule install         # weekly run from then on
 ```
 
+Read it in a browser with `yolo view`: one local HTML file with a sidebar, search and clickable `[[links]]`. It is rebuilt after every update.
+
 Other commands: `yolo stats`, `yolo update --dry-run`, `yolo schedule uninstall`.
 Change the vault location with `--vault PATH` or `YOLO_VAULT`.
 

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YOLO wiki</title>
+<style>
+:root{--bg:#fbfaf8;--panel:#f3f1ec;--ink:#1d1c1a;--muted:#6f6d66;--line:#e2dfd7;--accent:#c4552d;--accent-bg:#f8e6dd;--chip:#ebe8e1}
+@media (prefers-color-scheme: dark){:root{--bg:#191917;--panel:#211f1d;--ink:#ecebe6;--muted:#9c9a92;--line:#33312d;--accent:#ee8a5f;--accent-bg:#3a241a;--chip:#2c2a27}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 -apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif}
+.app{display:grid;grid-template-columns:280px minmax(0,1fr);min-height:100vh}
+nav{background:var(--panel);border-right:1px solid var(--line);padding:20px 16px;position:sticky;top:0;height:100vh;overflow:auto}
+.brand{font-weight:600;font-size:18px;margin:0 0 2px}
+.brand span{color:var(--accent)}
+.tag{color:var(--muted);font-size:12px;margin:0 0 16px}
+input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;font-size:14px;margin-bottom:16px}
+nav h4{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:16px 0 4px;font-weight:600}
+nav a{display:flex;justify-content:space-between;gap:8px;padding:4px 8px;border-radius:6px;color:var(--ink);text-decoration:none;font-size:14px}
+nav a:hover{background:var(--chip)}
+nav a.on{background:var(--accent-bg);color:var(--accent)}
+nav a .dot{width:7px;height:7px;border-radius:50%;flex:none;align-self:center}
+main{padding:40px 56px 80px;max-width:820px}
+.meta{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 8px}
+.pill{font-size:12px;padding:2px 10px;border-radius:999px;background:var(--chip);color:var(--muted)}
+.pill.active{background:var(--accent-bg);color:var(--accent)}
+main h1{font-size:30px;line-height:1.2;margin:4px 0 20px}
+main h2{font-size:20px;margin:32px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+main h3{font-size:17px;margin:24px 0 6px}
+main a{color:var(--accent);text-decoration:none}
+main a:hover{text-decoration:underline}
+main a.src{font-size:11px;padding:0 5px;border-radius:4px;background:var(--chip);color:var(--muted);vertical-align:1px}
+main a.wl{border-bottom:1px dashed var(--accent)}
+main a.wl:hover{text-decoration:none}
+main code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:.9em}
+main pre{background:var(--panel);padding:12px;border-radius:8px;overflow:auto}
+main blockquote{margin:0;padding-left:14px;border-left:3px solid var(--line);color:var(--muted)}
+main table{border-collapse:collapse;font-size:14px}
+main td,main th{border:1px solid var(--line);padding:6px 10px}
+main li{margin:4px 0}
+.dot.active{background:var(--accent)}.dot.paused{background:var(--muted);opacity:.5}.dot.none{background:transparent}
+@media (max-width:900px){.app{grid-template-columns:1fr}nav{position:sticky;top:0;z-index:1;height:auto;max-height:38vh;border-right:0;border-bottom:1px solid var(--line);padding:12px 16px}.tag{display:none}main{padding:20px 16px 60px}}
+</style>
+</head>
+<body>
+<div class="app">
+<nav>
+  <p class="brand"><span>YOLO</span> wiki</p>
+  <p class="tag">Your Ongoing Life Ontology</p>
+  <input id="q" placeholder="Search pages…" autocomplete="off">
+  <div id="toc"></div>
+</nav>
+<main id="page"></main>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script>
+const PAGES = /*PAGES*/{};
+const ORDER = [["", "Start here", ["now","me","index","decisions","log"]], ["projects","Projects"], ["people","People"], ["topics","Topics"]];
+const toc = document.getElementById('toc'), page = document.getElementById('page'), q = document.getElementById('q');
+const esc = s => s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function navHTML(filter) {
+  const f = (filter || '').toLowerCase();
+  let out = '';
+  for (const [sec, label, pin] of ORDER) {
+    let slugs = Object.keys(PAGES).filter(s => PAGES[s].section === sec);
+    if (pin) slugs = pin.filter(s => PAGES[s]).concat(slugs.filter(s => !pin.includes(s)));
+    else slugs.sort((a, b) => (PAGES[a].meta.status === 'active' ? 0 : 1) - (PAGES[b].meta.status === 'active' ? 0 : 1) || PAGES[a].title.localeCompare(PAGES[b].title));
+    if (f) slugs = slugs.filter(s => (PAGES[s].title + ' ' + PAGES[s].body).toLowerCase().includes(f));
+    if (!slugs.length) continue;
+    out += `<h4>${label} · ${slugs.length}</h4>`;
+    for (const s of slugs) {
+      const st = PAGES[s].meta.status;
+      const dot = st ? `<span class="dot ${st === 'active' ? 'active' : 'paused'}" title="${esc(st)}"></span>` : '';
+      out += `<a href="#${s}" data-s="${s}">${esc(PAGES[s].title)}${dot}</a>`;
+    }
+  }
+  return out || '<p class="tag">No matches</p>';
+}
+
+function render() {
+  const slug = decodeURIComponent(location.hash.slice(1)) || 'now';
+  const p = PAGES[slug] || PAGES.index;
+  let md = p.body
+    .replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, s, label) => PAGES[s.trim()] ? `[${label || PAGES[s.trim()].title}](#${s.trim()})` : (label || s));
+  let html = marked.parse(md);
+  html = html.replace(/<a href="(#[^"]+)">/g, '<a class="wl" href="$1">')
+             .replace(/<a href="(\.\.\/threads\/[^"]+)">src<\/a>/g, '<a class="src" href="$1" target="_blank" title="Open source thread">src</a>');
+  const m = p.meta, pills = [];
+  if (m.type) pills.push(`<span class="pill">${esc(m.type)}</span>`);
+  if (m.status) pills.push(`<span class="pill ${m.status === 'active' ? 'active' : ''}">${esc(m.status)}</span>`);
+  if (m.updated) pills.push(`<span class="pill">updated ${esc(m.updated)}</span>`);
+  page.innerHTML = (pills.length ? `<div class="meta">${pills.join('')}</div>` : '') + html;
+  document.title = p.title + ' · YOLO wiki';
+  toc.querySelectorAll('a').forEach(a => a.classList.toggle('on', a.dataset.s === slug));
+  window.scrollTo(0, 0);
+}
+
+toc.innerHTML = navHTML();
+q.addEventListener('input', () => { toc.innerHTML = navHTML(q.value); render(); });
+window.addEventListener('hashchange', render);
+render();
+</script>
+</body>
+</html>
