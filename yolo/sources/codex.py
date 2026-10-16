@@ -37,6 +37,16 @@ def _lines(f: Path):
 
 
 def threads(since: datetime, **_):
+    # Codex desktop writes extra rollouts (sub-agents, forks) that reuse the
+    # parent's session id. Keep the longest one per id: that's the main thread.
+    best: dict[str, Thread] = {}
+    for t in _all(since):
+        if t.id not in best or len(t.messages) > len(best[t.id].messages):
+            best[t.id] = t
+    yield from best.values()
+
+
+def _all(since: datetime):
     for f in (f for f in ROOT.glob("*/*/*/rollout-*.jsonl*") if f.suffix in (".jsonl", ".zst")):
         if datetime.fromtimestamp(f.stat().st_mtime, tz=timezone.utc) < since:
             continue

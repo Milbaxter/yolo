@@ -104,7 +104,7 @@ Every Sunday evening (via `launchd`; if the Mac was asleep, the run happens when
 ```bash
 pip install git+https://github.com/Milbaxter/yolo
 yolo init                     # creates ~/PersonalContext (a private local git repo)
-yolo ingest --since all       # one-time backfill of everything still on disk
+yolo ingest --since all --queue-since 30d   # archive everything, fold the last month into the wiki
 yolo update --agent claude    # or --agent codex [--model …]; repeat until nothing pending
 yolo schedule install         # weekly run from then on
 ```

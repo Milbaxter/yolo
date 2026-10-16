@@ -138,8 +138,9 @@ def cmd_ingest(a) -> list[Path]:
     v = a.vault
     state = load_state(v)
     since = parse_since(a.since, state)
+    queue_since = parse_since(a.queue_since, state) if getattr(a, "queue_since", None) else since
     wanted = a.source or list(sources.ALL)
-    touched, totals = [], {}
+    touched, queued, totals = [], [], {}
     for name in wanted:
         n = chars = hits = 0
         try:
@@ -153,6 +154,8 @@ def cmd_ingest(a) -> list[Path]:
                 p.parent.mkdir(parents=True, exist_ok=True)
                 p.write_text(body)
                 touched.append(p)
+                if t.updated >= queue_since:
+                    queued.append(p)
                 n, chars, hits = n + 1, chars + len(body), hits + h
         except Exception as e:  # one broken source shouldn't stop the others
             print(f"  {name}: FAILED ({e})", file=sys.stderr)
@@ -160,7 +163,7 @@ def cmd_ingest(a) -> list[Path]:
         totals[name] = n
         print(f"  {name:12} {n:5} threads  ~{chars // 4:>9,} tokens  {hits} secrets redacted")
     state["last_ingest"] = now().isoformat()
-    state["pending"] = sorted({*state.get("pending", []), *(str(p.relative_to(v)) for p in touched)})
+    state["pending"] = sorted({*state.get("pending", []), *(str(p.relative_to(v)) for p in queued)})
     save_state(v, state)
     print(f"{len(touched)} new/updated threads since {since:%Y-%m-%d}; {len(state['pending'])} waiting for `yolo update`")
     return touched
@@ -279,6 +282,7 @@ def main(argv=None) -> None:
     p = sub.add_parser("ingest")
     p.add_argument("--since", default="last", help="7d, 2w, all, last, or YYYY-MM-DD")
     p.add_argument("--source", action="append", choices=list(sources.ALL))
+    p.add_argument("--queue-since", help="archive everything from --since, but only queue threads newer than this for the wiki (e.g. --since all --queue-since 30d)")
     for name in ("update", "weekly"):
         p = sub.add_parser(name)
         p.add_argument("--agent", default="codex", choices=["codex", "claude"])
