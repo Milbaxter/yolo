@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yolo-ontology"
+version = "0.1.0"
+description = "YOLO — Your Ongoing Life Ontology. Weaves your AI threads (Claude, Codex, Cursor, Gemini, ChatGPT…) into one local personal wiki, updated weekly by an agent."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+yolo = "yolo.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["yolo*"]
+
+[tool.setuptools.package-data]
+yolo = ["templates/*"]
