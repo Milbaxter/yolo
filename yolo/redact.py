@@ -9,8 +9,8 @@ import re
 
 _PATTERNS = [
     ("private-key", r"-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----"),
-    ("anthropic-key", r"sk-ant-[A-Za-z0-9_\-]{20,}"),
-    ("openai-key", r"sk-(?:proj-|svcacct-)?[A-Za-z0-9_\-]{20,}"),
+    ("anthropic-key", r"(?<![A-Za-z0-9])sk-ant-[A-Za-z0-9_\-]{20,}"),
+    ("openai-key", r"(?<![A-Za-z0-9])sk-(?:proj-|svcacct-)?[A-Za-z0-9_\-]{20,}"),
     ("github-token", r"(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{40,}"),
     ("aws-key", r"(?:AKIA|ASIA)[0-9A-Z]{16}"),
     ("google-key", r"AIza[0-9A-Za-z_\-]{35}"),

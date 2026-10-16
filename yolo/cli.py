@@ -302,7 +302,7 @@ def main(argv=None) -> None:
     if a.vault == REPO or REPO in a.vault.parents:
         raise SystemExit(f"refusing to use a vault inside the YOLO repo ({REPO}); personal data must live elsewhere")
     {"init": cmd_init, "ingest": cmd_ingest, "update": cmd_update, "weekly": cmd_weekly,
-     "schedule": cmd_schedule, "stats": cmd_stats}[a.cmd](a)
+     "schedule": cmd_schedule, "stats": cmd_stats}[a.cmd](a) is False and sys.exit(1)
 
 
 if __name__ == "__main__":
