@@ -1,7 +1,7 @@
 # Personal context vault
 
 This folder is one person's private, living wiki, compiled from their AI
-conversations across tools (Claude, Codex, Cursor, Gemini, ChatGPT, ...).
+conversations across tools (Claude, Codex, Cursor, Gemini, ChatGPT, Grok, ...).
 Any agent may read it for context. Only the weekly YOLO run edits it.
 
 ## Layout
@@ -17,7 +17,7 @@ Any agent may read it for context. Only the weekly YOLO run edits it.
   - `log.md`: append-only changelog of each update run.
 - `threads/YYYY/MM/<source>/*.md`: normalized, redacted source conversations.
   These are the evidence. Never edit them.
-- `inbox/`: drop ChatGPT / Claude.ai export zips here.
+- `inbox/`: drop ChatGPT / Claude.ai / Grok export zips here.
 
 ## Page conventions
 

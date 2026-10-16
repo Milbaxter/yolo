@@ -44,7 +44,7 @@ knowledge once into linked pages and keep them up to date.
  ┌─────────────────────────┐
  │ Claude Code   Codex     │   1. INGEST    ┌──────────────────────────────┐
  │ Cursor        Gemini CLI│ ─────────────▶ │ threads/   normalized,        │
- │ ChatGPT / Claude.ai zips│   + REDACT     │            secret-scrubbed    │
+ │ ChatGPT/Claude.ai/Grok  │   + REDACT     │            secret-scrubbed    │
  └─────────────────────────┘                │            Markdown archive   │
                                             └──────────────┬───────────────┘
                                                            │ 2. UPDATE
@@ -66,7 +66,7 @@ knowledge once into linked pages and keep them up to date.
 Every Sunday evening (via `launchd`; if the Mac was asleep, the run happens when it wakes):
 
 1. **Ingest.** Read new conversations since the last run from each tool's local
-   logs, plus any export zips you dropped in `inbox/`. Keep only what you and
+   logs, plus any ChatGPT, Claude.ai or Grok export zips you dropped in `inbox/`. Keep only what you and
    the AI said (no tool output or system prompts), cut very long replies,
    and **redact secrets** (API keys, tokens, private keys, passwords).
 2. **Update.** Hand the new threads to a sandboxed headless agent with a fixed
@@ -95,7 +95,7 @@ Every Sunday evening (via `launchd`; if the Mac was asleep, the run happens when
     decisions.md              dated decisions and why
     log.md                    what each weekly run changed
   threads/YYYY/MM/<tool>/     the evidence (redacted conversations)
-  inbox/                      drop ChatGPT / Claude.ai export zips here
+  inbox/                      drop ChatGPT / Claude.ai / Grok export zips here
   AGENTS.md                   conventions for any agent reading the vault
 ```
 
@@ -125,7 +125,8 @@ Change the vault location with `--vault PATH` or `YOLO_VAULT`.
 | Gemini CLI | `~/.gemini/tmp/*/chats/` | Credential files next to it are never read. |
 | ChatGPT | export zip → `inbox/chatgpt/` | Settings → Data controls → Export. |
 | Claude.ai / desktop chat | export zip → `inbox/claude/` | Settings → Privacy → Export data. |
-| Grok, Gemini web, Perplexity, aider, Continue | planned | PRs welcome; an adapter is roughly 50 lines. |
+| Grok | export zip → `inbox/grok/` | grok.com → Settings → Download your data (`prod-grok-backend.json`). Format is undocumented, so the parser is lenient. |
+| Gemini web, Perplexity, aider, Continue | planned | PRs welcome; an adapter is roughly 50 lines. |
 
 Web chat apps keep your history on their servers, so the only way to get it is
 an export. Doing one a month is enough.
@@ -144,7 +145,7 @@ an export. Doing one a month is enough.
 ## Roadmap
 
 - MCP server so any model can query and append to your vault live
-- More adapters (Grok, Gemini Takeout, Perplexity, aider, Continue, Open WebUI)
+- More adapters (Gemini Takeout, Perplexity, aider, Continue, Open WebUI)
 - Optional typed entity graph (`entities.jsonl`) for tools that want structure
 - Linux (systemd) and Windows scheduling
 

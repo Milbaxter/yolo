@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "yolo-ontology"
 version = "0.1.0"
-description = "YOLO — Your Ongoing Life Ontology. Weaves your AI threads (Claude, Codex, Cursor, Gemini, ChatGPT…) into one local personal wiki, updated weekly by an agent."
+description = "YOLO — Your Ongoing Life Ontology. Weaves your AI threads (Claude, Codex, Cursor, Gemini, ChatGPT, Grok…) into one local personal wiki, updated weekly by an agent."
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.10"

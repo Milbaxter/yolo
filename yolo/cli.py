@@ -79,7 +79,7 @@ def notify(msg: str) -> None:
 
 def cmd_init(a) -> None:
     v = a.vault
-    for d in ("wiki", "threads", "inbox/chatgpt", "inbox/claude", ".yolo"):
+    for d in ("wiki", "threads", "inbox/chatgpt", "inbox/claude", "inbox/grok", ".yolo"):
         (v / d).mkdir(parents=True, exist_ok=True)
     for name, dest in (("AGENTS.md", "AGENTS.md"), ("index.md", "wiki/index.md"), ("me.md", "wiki/me.md")):
         if not (v / dest).exists():
